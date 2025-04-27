@@ -1,7 +1,10 @@
+import azure.functions as func
+import logging
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from datetime import datetime
+import uvicorn
 
 app = FastAPI(title="CarPool API", description="API for managing carpool services")
 
@@ -62,6 +65,5 @@ async def delete_carpool(carpool_id: int):
             return {"message": "CarPool deleted successfully"}
     raise HTTPException(status_code=404, detail="CarPool not found")
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+async def main(req: func.HttpRequest, context: func.Context) -> func.HttpResponse:
+    return await func.AsgiMiddleware(app).handle_async(req, context)
