@@ -3,7 +3,6 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from datetime import datetime
-import json
 
 app = FastAPI(title="CarPool API", description="API for managing carpool services")
 
@@ -31,19 +30,16 @@ async def get_carpools():
 
 @app.get("/api/carpools/{carpool_id}", response_model=CarPool)
 async def get_carpool(carpool_id: int):
-    for carpool in carpools:
-        if carpool.id == carpool_id:
-            return carpool
-    raise HTTPException(status_code=404, detail="CarPool not found")
+    carpool = next((c for c in carpools if c.id == carpool_id), None)
+    if not carpool:
+        raise HTTPException(status_code=404, detail="CarPool not found")
+    return carpool
 
 @app.post("/api/carpools", response_model=CarPool)
 async def create_carpool(carpool: CarPool):
     # Find the next available ID
     existing_ids = {c.id for c in carpools if c.id is not None}
-    next_id = 1
-    while next_id in existing_ids:
-        next_id += 1
-    carpool.id = next_id
+    carpool.id = max(existing_ids, default=0) + 1
     carpools.append(carpool)
     return carpool
 
@@ -64,11 +60,5 @@ async def delete_carpool(carpool_id: int):
             return {"message": "CarPool deleted successfully"}
     raise HTTPException(status_code=404, detail="CarPool not found")
 
-# Azure Functions handler
 async def main(req: func.HttpRequest, context: func.Context) -> func.HttpResponse:
-    """
-    Main Azure Functions handler that integrates with FastAPI
-    """
-    # Create ASGI handler
-    asgi_handler = await func.AsgiMiddleware(app).handle_async(req, context)
-    return asgi_handler 
+    return await func.AsgiMiddleware(app).handle_async(req, context) 
